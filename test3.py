@@ -52,14 +52,14 @@ N = len(label_set)
 print("M=", M, "\tN=", N)
 #print("word_set=", word_set, type(word_set))
 #print("label_set=", label_set, type(label_set))
-
+"""
 # initialize the initial probability matrix
 P_init = torch.zeros(N)
 # initialize the transition probability matrix
 P_trans = torch.zeros(N, N)
 # initialize the observation probability matrix
 P_observ = torch.zeros(N, M)
-
+"""
 # convert sets to lists, so that each word corresponds to each label
 w_list = []
 l_list = []
@@ -91,14 +91,21 @@ def train(word_lists, label_lists, word2id, label2id):
     :return: P_init, P_trans, P_observ
     """
 
+    # initialize the initial probability matrix
+    P_init = torch.zeros(N)
+    # initialize the transition probability matrix
+    P_trans = torch.zeros(N, N)
+    # initialize the observation probability matrix
+    P_observ = torch.zeros(N, M)
+
     assert len(word_lists) == len(label_lists)
 
     # estimate initial probability matrix
     for label_list in label_lists:
         init_label_id = label2id[label_list[0]]
         P_init[init_label_id] += 1
-    #Pi_init[Pi_init == 0.] = 1e-10
-    P_init / P_init.sum()
+    P_init[P_init == 0.] = 1e-10
+    P_init /= P_init.sum()
 
     # estimate transition probability matrix
     for label_list in label_lists:
@@ -106,8 +113,8 @@ def train(word_lists, label_lists, word2id, label2id):
             current_label_id = label2id[label_list[i]]
             next_label_id = label2id[label_list[i+1]]
             P_trans[current_label_id][next_label_id] += 1
-        #P_trans[P_trans == 0.] = 1e-10
-        P_trans / P_trans.sum(dim=1, keepdim=True)
+        P_trans[P_trans == 0.] = 1e-10
+        P_trans /= P_trans.sum(dim=1, keepdim=True)
 
     # estimate observation probability matrix
     for label_list, word_list in zip(label_lists, word_lists):
@@ -116,19 +123,35 @@ def train(word_lists, label_lists, word2id, label2id):
             label_id = label2id[label]
             word_id = word2id[word]
             P_observ[label_id][word_id] += 1
-        #P_observ[P_observ == 0.] = 1e-10
-        P_observ / P_observ.sum(dim=1, keepdim=True)
+        P_observ[P_observ == 0.] = 1e-10
+        P_observ /= P_observ.sum(dim=1, keepdim=True)
 
     print("Initial probability vector \nP_init:", P_init)
     print("\n")
     print("Transition probability matrix \nP_trans:", P_trans)
     print("\n")
     print("Observation probability matrix \nP_observ:", P_observ)
-    return P_init, P_trans, P_observ
+    #return P_init, P_trans, P_observ
+
+    ### print for each label the first 10 words with hightest probabilities
+    # format top10_dict: {  label1: [(word1, prob1), (word2, prob2), ... ,(word10, prob10)],
+    #                       label2: [(word1, prob1), (word2, prob2), ... ,(word10, prob10)],
+    #                       ...
+    #                       label24: [(word1, prob1), (word2, prob2), ... ,(word10, prob10)]}
+    top10_dict = dict()
+    for l_id in range(len(P_observ)):
+        top10_prob_id = P_observ[l_id].topk(10)  # format top10_prob_id: (values, indices), values are probabilities
+        w_list_currlab = []  # word list corresponds to current label
+        for prob, w_id in zip(top10_prob_id[0].tolist(), top10_prob_id[1].tolist()):
+            w_list_currlab.append((w_list[w_id], prob))
+        top10_dict[l_list[l_id]] = (w_list_currlab)
+    print("\n")
+    print("DICTIONARY:", top10_dict, len(top10_dict))
 
 train(word_lists, label_lists, word2id, label2id)
 
-# print for each label the first 10 words with hightest probabilities
+"""
+### print for each label the first 10 words with hightest probabilities
 # format top10_dict: {  label1: [(word1, prob1), (word2, prob2), ... ,(word10, prob10)],
 #                       label2: [(word1, prob1), (word2, prob2), ... ,(word10, prob10)],
 #                       ...
@@ -142,6 +165,6 @@ for l_id in range(len(P_observ)):
     top10_dict[l_list[l_id]] = (w_list_currlab)
 print("\n")
 print("DICTIONARY:", top10_dict, len(top10_dict))
+"""
 
-
-# calculate the probabilities for the first 10 instances from NER-de-dev.tsv
+### calculate the probabilities for the first 10 instances from NER-de-dev.tsv
